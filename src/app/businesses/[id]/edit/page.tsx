@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Business, BusinessType } from "@/types/business";
 
 interface ContactInfo {
@@ -74,16 +74,7 @@ export default function EditBusinessPage() {
         "24-hours", "open-late", "weekend", "appointment", "walk-in", "online", "mobile"
     ];
 
-    useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/auth/login");
-        } else if (status === "authenticated" && params.id) {
-            fetchBusiness();
-            fetchBusinessTypes();
-        }
-    }, [status, router, params.id]);
-
-    const fetchBusiness = async () => {
+    const fetchBusiness = useCallback(async () => {
         try {
             const response = await fetch(`/api/businesses/${params.id}`);
             const data = await response.json();
@@ -100,12 +91,12 @@ export default function EditBusinessPage() {
                     address: businessData.address || "",
                     google_maps_url: businessData.google_maps_url || "",
                     description: businessData.description || "",
-                    tags: businessData.tags?.map((tag: any) => tag.tag).join(", ") || "",
+                    tags: businessData.tags?.map((tag: { tag: string }) => tag.tag).join(", ") || "",
                 });
 
                 // Populate selected tags
                 if (businessData.tags && businessData.tags.length > 0) {
-                    setSelectedTags(businessData.tags.map((tag: any) => tag.tag));
+                    setSelectedTags(businessData.tags.map((tag: { tag: string }) => tag.tag));
                 }
 
                 // Populate phone numbers
@@ -126,7 +117,7 @@ export default function EditBusinessPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [params.id]);
 
     const fetchBusinessTypes = async () => {
         try {
@@ -139,6 +130,15 @@ export default function EditBusinessPage() {
             console.error("Error fetching business types:", error);
         }
     };
+
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/auth/login");
+        } else if (status === "authenticated" && params.id) {
+            fetchBusiness();
+            fetchBusinessTypes();
+        }
+    }, [status, router, params.id, fetchBusiness]);
 
     const handleInputChange = (
         e: React.ChangeEvent<

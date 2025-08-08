@@ -2,7 +2,8 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { Business } from "@/types/business";
 
 interface QRCodeData {
@@ -32,22 +33,13 @@ export default function QRCodeGeneratorPage() {
     errorCorrectionLevel: "M",
   });
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    } else if (status === "authenticated" && params.id) {
-      fetchBusiness();
-    }
-  }, [status, router, params.id]);
-
-  const fetchBusiness = async () => {
+  const fetchBusiness = useCallback(async () => {
     try {
       const response = await fetch(`/api/businesses/${params.id}`);
       const data = await response.json();
 
       if (response.ok) {
         setBusiness(data.business);
-        generateQRCode(); // Generate initial QR code
       } else {
         setError(data.error || "Failed to fetch business details");
       }
@@ -57,9 +49,9 @@ export default function QRCodeGeneratorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
 
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     setGenerating(true);
     setError("");
 
@@ -87,7 +79,22 @@ export default function QRCodeGeneratorPage() {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [params.id, qrOptions.size, qrOptions.margin, qrOptions.errorCorrectionLevel]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    } else if (status === "authenticated" && params.id) {
+      fetchBusiness();
+    }
+  }, [status, router, params.id, fetchBusiness]);
+
+  // Generate QR code when business is loaded
+  useEffect(() => {
+    if (business) {
+      generateQRCode();
+    }
+  }, [business, generateQRCode]);
 
   const downloadQRCode = async (format: "png" | "svg") => {
     try {
@@ -285,11 +292,12 @@ export default function QRCodeGeneratorPage() {
                 </div>
               ) : qrData ? (
                 <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
-                  <img
+                  <Image
                     src={qrData.qrCode}
                     alt={`QR Code for ${business.name}`}
+                    width={qrOptions.size}
+                    height={qrOptions.size}
                     className="max-w-full h-auto"
-                    style={{ width: qrOptions.size, height: qrOptions.size }}
                   />
                 </div>
               ) : (

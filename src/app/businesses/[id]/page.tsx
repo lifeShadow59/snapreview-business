@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Business } from "@/types/business";
 
 interface Feedback {
@@ -30,16 +30,7 @@ export default function BusinessDetailsPage() {
   const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
   const [generatingAIFeedback, setGeneratingAIFeedback] = useState(false);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    } else if (status === "authenticated" && params.id) {
-      fetchBusiness();
-      fetchFeedbacks();
-    }
-  }, [status, router, params.id]);
-
-  const fetchBusiness = async () => {
+  const fetchBusiness = useCallback(async () => {
     try {
       const response = await fetch(`/api/businesses/${params.id}`);
       const data = await response.json();
@@ -55,7 +46,7 @@ export default function BusinessDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
 
   const handleSignOut = async () => {
     await signOut({
@@ -73,7 +64,7 @@ export default function BusinessDetailsPage() {
   };
 
   // Feedback management functions
-  const fetchFeedbacks = async () => {
+  const fetchFeedbacks = useCallback(async () => {
     try {
       const response = await fetch(`/api/businesses/${params.id}/feedbacks`);
       const data = await response.json();
@@ -86,7 +77,16 @@ export default function BusinessDetailsPage() {
     } catch (error) {
       console.error("Error fetching feedbacks:", error);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    } else if (status === "authenticated" && params.id) {
+      fetchBusiness();
+      fetchFeedbacks();
+    }
+  }, [status, router, params.id, fetchBusiness, fetchFeedbacks]);
 
   const addFeedback = async () => {
     if (!feedbackText.trim()) return;
