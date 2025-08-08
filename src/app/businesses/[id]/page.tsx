@@ -5,6 +5,13 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Business } from "@/types/business";
 
+interface Feedback {
+  id: number;
+  business_id: string;
+  feedback: string;
+  created_at: string;
+}
+
 export default function BusinessDetailsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -12,12 +19,23 @@ export default function BusinessDetailsPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  
+  // Feedback management state
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [editingFeedback, setEditingFeedback] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [addingFeedback, setAddingFeedback] = useState(false);
+  const [updatingFeedback, setUpdatingFeedback] = useState(false);
+  const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
+  const [generatingAIFeedback, setGeneratingAIFeedback] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     } else if (status === "authenticated" && params.id) {
       fetchBusiness();
+      fetchFeedbacks();
     }
   }, [status, router, params.id]);
 
@@ -53,6 +71,151 @@ export default function BusinessDetailsPage() {
       day: "numeric",
     });
   };
+
+  // Feedback management functions
+  const fetchFeedbacks = async () => {
+    try {
+      const response = await fetch(`/api/businesses/${params.id}/feedbacks`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbacks(data.feedbacks);
+      } else {
+        console.error("Error fetching feedbacks:", data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching feedbacks:", error);
+    }
+  };
+
+  const addFeedback = async () => {
+    if (!feedbackText.trim()) return;
+
+    setAddingFeedback(true);
+    try {
+      const response = await fetch(`/api/businesses/${params.id}/feedbacks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ feedback: feedbackText }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbacks((prev) => [data.feedback, ...prev]);
+        setFeedbackText("");
+      } else {
+        setError(data.error || "Failed to add feedback");
+      }
+    } catch (error) {
+      console.error("Error adding feedback:", error);
+      setError("An unexpected error occurred while adding feedback");
+    } finally {
+      setAddingFeedback(false);
+    }
+  };
+
+  const startEditFeedback = (feedback: Feedback) => {
+    setEditingFeedback(feedback.id);
+    setEditingText(feedback.feedback);
+  };
+
+  const cancelEditFeedback = () => {
+    setEditingFeedback(null);
+    setEditingText("");
+  };
+
+  const updateFeedback = async (feedbackId: number) => {
+    if (!editingText.trim()) return;
+
+    setUpdatingFeedback(true);
+    try {
+      const response = await fetch(
+        `/api/businesses/${params.id}/feedbacks/${feedbackId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ feedback: editingText }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbacks((prev) =>
+          prev.map((f) =>
+            f.id === feedbackId ? { ...f, feedback: editingText } : f
+          )
+        );
+        setEditingFeedback(null);
+        setEditingText("");
+      } else {
+        setError(data.error || "Failed to update feedback");
+      }
+    } catch (error) {
+      console.error("Error updating feedback:", error);
+      setError("An unexpected error occurred while updating feedback");
+    } finally {
+      setUpdatingFeedback(false);
+    }
+  };
+
+  const deleteFeedback = async (feedbackId: number) => {
+    if (!confirm("Are you sure you want to delete this feedback?")) return;
+
+    setDeletingFeedback(feedbackId);
+    try {
+      const response = await fetch(
+        `/api/businesses/${params.id}/feedbacks/${feedbackId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        setFeedbacks((prev) => prev.filter((f) => f.id !== feedbackId));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete feedback");
+      }
+    } catch (error) {
+      console.error("Error deleting feedback:", error);
+      setError("An unexpected error occurred while deleting feedback");
+    } finally {
+      setDeletingFeedback(null);
+    }
+  };
+
+  const generateAIFeedback = async () => {
+    setGeneratingAIFeedback(true);
+    try {
+      const response = await fetch(`/api/businesses/${params.id}/generate-feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbackText(data.feedback);
+      } else {
+        setError(data.error || "Failed to generate AI feedback");
+      }
+    } catch (error) {
+      console.error("Error generating AI feedback:", error);
+      setError("An unexpected error occurred while generating AI feedback");
+    } finally {
+      setGeneratingAIFeedback(false);
+    }
+  };
+
+
 
   if (status === "loading" || loading) {
     return (
@@ -205,7 +368,10 @@ export default function BusinessDetailsPage() {
                 </svg>
                 Generate QR Code
               </button>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+              <button 
+                onClick={() => router.push(`/businesses/${business.id}/edit`)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+              >
                 <svg
                   className="w-4 h-4 mr-2"
                   fill="none"
@@ -426,6 +592,243 @@ export default function BusinessDetailsPage() {
                 </div>
               </div>
             )}
+
+            {/* Business Feedbacks */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Business Feedbacks
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Add and manage feedback for your business
+                </p>
+              </div>
+              <div className="p-6">
+                {/* Add New Feedback */}
+                <div className="mb-6">
+                  <label
+                    htmlFor="feedback"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Add New Feedback
+                  </label>
+                  <textarea
+                    id="feedback"
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Enter your feedback here..."
+                    rows={4}
+                    maxLength={1000}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      {feedbackText.length}/1000 characters
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={generateAIFeedback}
+                        disabled={generatingAIFeedback || addingFeedback}
+                        className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center"
+                      >
+                        {generatingAIFeedback ? (
+                          <>
+                            <svg
+                              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                              />
+                            </svg>
+                            Generate AI Feedback
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={addFeedback}
+                        disabled={!feedbackText.trim() || addingFeedback}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                      >
+                        {addingFeedback ? "Adding..." : "Add Feedback to List"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feedback List */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    Feedback List ({feedbacks.length})
+                  </h3>
+                  {feedbacks.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg
+                        className="w-12 h-12 mx-auto mb-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      <p>No feedback added yet</p>
+                      <p className="text-sm">Add your first feedback above</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {feedbacks.map((feedback) => (
+                        <div
+                          key={feedback.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                        >
+                          {editingFeedback === feedback.id ? (
+                            <div>
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                rows={3}
+                                maxLength={1000}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-2"
+                              />
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500">
+                                  {editingText.length}/1000 characters
+                                </span>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => updateFeedback(feedback.id)}
+                                    disabled={!editingText.trim() || updatingFeedback}
+                                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
+                                  >
+                                    {updatingFeedback ? "Saving..." : "Save"}
+                                  </button>
+                                  <button
+                                    onClick={cancelEditFeedback}
+                                    disabled={updatingFeedback}
+                                    className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-gray-900 mb-2 whitespace-pre-wrap">
+                                {feedback.feedback}
+                              </p>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500">
+                                  Added on {formatDate(feedback.created_at)}
+                                </span>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => startEditFeedback(feedback)}
+                                    disabled={editingFeedback !== null || deletingFeedback !== null}
+                                    className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-transparent rounded transition-colors"
+                                    title="Edit feedback"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => deleteFeedback(feedback.id)}
+                                    disabled={editingFeedback !== null || deletingFeedback !== null}
+                                    className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:bg-transparent rounded transition-colors relative"
+                                    title="Delete feedback"
+                                  >
+                                    {deletingFeedback === feedback.id ? (
+                                      <svg
+                                        className="w-4 h-4 animate-spin"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <circle
+                                          className="opacity-25"
+                                          cx="12"
+                                          cy="12"
+                                          r="10"
+                                          stroke="currentColor"
+                                          strokeWidth="4"
+                                        ></circle>
+                                        <path
+                                          className="opacity-75"
+                                          fill="currentColor"
+                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
+                                      </svg>
+                                    ) : (
+                                      <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Right Column - Contact Information */}

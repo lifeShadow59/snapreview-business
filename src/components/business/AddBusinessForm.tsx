@@ -34,6 +34,12 @@ export default function AddBusinessForm() {
     tags: "", // Will be converted to array
   });
 
+  // Tag management state
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [phoneNumbers, setPhoneNumbers] = useState<ContactInfo[]>([
     { phone_number: "", is_primary: true, label: "Primary" },
   ]);
@@ -41,6 +47,27 @@ export default function AddBusinessForm() {
   const [emailAddresses, setEmailAddresses] = useState<EmailInfo[]>([
     { email_address: "", is_primary: true, label: "Primary" },
   ]);
+
+  // Predefined tag suggestions
+  const predefinedTags = [
+    "restaurant", "food", "pizza", "burger", "coffee", "cafe", "bakery", "dessert",
+    "delivery", "takeout", "dine-in", "fast-food", "fine-dining", "casual-dining",
+    "italian", "chinese", "indian", "mexican", "japanese", "thai", "american",
+    "vegetarian", "vegan", "halal", "kosher", "organic", "healthy",
+    "shopping", "retail", "clothing", "fashion", "electronics", "books", "gifts",
+    "beauty", "salon", "spa", "massage", "wellness", "fitness", "gym", "yoga",
+    "healthcare", "medical", "dental", "pharmacy", "clinic", "hospital",
+    "automotive", "repair", "service", "maintenance", "car-wash", "gas-station",
+    "education", "school", "training", "tutoring", "language", "music", "art",
+    "entertainment", "cinema", "theater", "gaming", "sports", "recreation",
+    "hotel", "accommodation", "travel", "tourism", "vacation", "resort",
+    "professional", "consulting", "legal", "accounting", "real-estate", "insurance",
+    "technology", "software", "hardware", "repair", "support", "development",
+    "home-services", "cleaning", "plumbing", "electrical", "construction", "renovation",
+    "pet-services", "veterinary", "grooming", "boarding", "training", "supplies",
+    "luxury", "premium", "budget", "affordable", "family-friendly", "kid-friendly",
+    "24-hours", "open-late", "weekend", "appointment", "walk-in", "online", "mobile"
+  ];
 
   // Fetch business types on component mount
   useEffect(() => {
@@ -121,6 +148,50 @@ export default function AddBusinessForm() {
     }
   };
 
+  // Tag management functions
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTagInput(value);
+
+    if (value.length >= 3) {
+      const filtered = predefinedTags.filter(
+        (tag) =>
+          tag.toLowerCase().includes(value.toLowerCase()) &&
+          !selectedTags.includes(tag)
+      );
+      setTagSuggestions(filtered.slice(0, 10)); // Limit to 10 suggestions
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+      setTagSuggestions([]);
+    }
+  };
+
+  const addTag = (tag: string) => {
+    if (tag.trim() && !selectedTags.includes(tag.trim())) {
+      setSelectedTags((prev) => [...prev, tag.trim()]);
+      setTagInput("");
+      setShowSuggestions(false);
+      setTagSuggestions([]);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (tagInput.trim()) {
+        addTag(tagInput);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setTagSuggestions([]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -134,14 +205,9 @@ export default function AddBusinessForm() {
         business_type_id: formData.business_type_id || undefined,
         website: formData.website || undefined,
         address: formData.address || undefined,
-        google_maps_url: formData.google_maps_url || undefined,
+        google_maps_url: formData.google_maps_url,
         description: formData.description || undefined,
-        tags: formData.tags
-          ? formData.tags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter((tag) => tag)
-          : undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
         phone_numbers: phoneNumbers.filter((phone) =>
           phone.phone_number.trim()
         ),
@@ -302,7 +368,7 @@ export default function AddBusinessForm() {
                 htmlFor="google_maps_url"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Google Maps Location URL
+                Your Business Review link *
               </label>
               <input
                 type="url"
@@ -310,7 +376,8 @@ export default function AddBusinessForm() {
                 name="google_maps_url"
                 value={formData.google_maps_url}
                 onChange={handleInputChange}
-                placeholder="https://maps.google.com/..."
+                required
+                placeholder="https://www.google.com/maps/place/your-business/..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -357,24 +424,76 @@ export default function AddBusinessForm() {
           </div>
 
           <p className="text-sm text-gray-600 mb-4">
-            Add tags to help customers find your business
+            Add tags to help customers find your business. Type at least 3 characters to see suggestions.
           </p>
 
-          <div>
+          {/* Selected Tags Display */}
+          {selectedTags.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2">
+                {selectedTags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
+                  >
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-200 hover:bg-blue-300 text-blue-600 hover:text-blue-800 transition-colors"
+                      title="Remove tag"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tag Input with Autocomplete */}
+          <div className="relative">
             <input
               type="text"
-              id="tags"
-              name="tags"
-              value={formData.tags}
-              onChange={handleInputChange}
-              placeholder="Type to search or select tags..."
+              value={tagInput}
+              onChange={handleTagInputChange}
+              onKeyDown={handleTagKeyPress}
+              placeholder="Type to search for tags..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Examples: food, pizza, delivery, luxury, family-friendly, etc.
-              (separate with commas)
-            </p>
+            
+            {/* Suggestions Dropdown */}
+            {showSuggestions && tagSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {tagSuggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => addTag(suggestion)}
+                    className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                  >
+                    <span className="text-gray-700">#{suggestion}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          <p className="text-xs text-gray-500 mt-2">
+            Type at least 3 characters to see suggestions, or press Enter to add a custom tag.
+          </p>
         </div>
 
         {/* Contact Information Section */}
