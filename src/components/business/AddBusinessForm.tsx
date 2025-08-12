@@ -17,14 +17,48 @@ interface EmailInfo {
   label: string;
 }
 
+interface Feedback {
+  id?: number;
+  business_id?: string;
+  feedback: string;
+  created_at?: string;
+}
+
+// Dummy data generator functions
+const generateDummyData = () => {
+  const dummyAddresses = ["123 Main Street, City, State 12345", "456 Business Ave, Town, State 67890"];
+  const dummyDescriptions = [
+    "A local business serving the community with quality products and services.",
+    "Dedicated to providing excellent customer service and value."
+  ];
+  const dummyTagSets = [
+    ["local", "community", "service"],
+    ["business", "professional", "quality"]
+  ];
+
+  return {
+    address: dummyAddresses[Math.floor(Math.random() * dummyAddresses.length)],
+    description: dummyDescriptions[Math.floor(Math.random() * dummyDescriptions.length)],
+    tags: dummyTagSets[Math.floor(Math.random() * dummyTagSets.length)],
+    website: "https://example-business.com",
+    phone_number: "+1 (555) 123-4567",
+    email: "contact@example-business.com"
+  };
+};
+
 export default function AddBusinessForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([]);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
 
-  // Form state
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [createdBusinessId, setCreatedBusinessId] = useState<string>("");
+
+  // Form state - name and google_maps_url are mandatory
   const [formData, setFormData] = useState({
     name: "",
     business_type_id: 0,
