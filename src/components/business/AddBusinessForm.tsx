@@ -215,28 +215,33 @@ export default function AddBusinessForm() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1 - Create Business
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      // Prepare the request data
+      // Generate dummy data for empty fields
+      const dummyData = generateDummyData();
+
+      // Prepare the request data with dummy values for empty fields
+      // Note: We don't send tags in Step 1 - they're only used for AI generation in Step 2
       const requestData: CreateBusinessRequest = {
-        name: formData.name,
-        business_type_id: formData.business_type_id || undefined,
-        website: formData.website || undefined,
-        address: formData.address || undefined,
-        google_maps_url: formData.google_maps_url,
-        description: formData.description || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
-        phone_numbers: phoneNumbers.filter((phone) =>
-          phone.phone_number.trim()
-        ),
-        email_addresses: emailAddresses.filter((email) =>
-          email.email_address.trim()
-        ),
+        name: formData.name.trim(), // This is mandatory now
+        business_type_id: formData.business_type_id || (businessTypes.length > 0 ? businessTypes[0].id : 1),
+        website: formData.website.trim() || dummyData.website,
+        address: formData.address.trim() || dummyData.address,
+        google_maps_url: formData.google_maps_url, // This is mandatory
+        description: formData.description.trim() || dummyData.description,
+        tags: dummyData.tags, // Always use dummy tags for database, not user-selected tags
+        phone_numbers: phoneNumbers.some(phone => phone.phone_number.trim())
+          ? phoneNumbers.filter((phone) => phone.phone_number.trim())
+          : [{ phone_number: dummyData.phone_number, is_primary: true, label: "Primary" }],
+        email_addresses: emailAddresses.some(email => email.email_address.trim())
+          ? emailAddresses.filter((email) => email.email_address.trim())
+          : [{ email_address: dummyData.email, is_primary: true, label: "Primary" }],
       };
 
       const response = await fetch("/api/businesses", {
@@ -250,11 +255,12 @@ export default function AddBusinessForm() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess("Business created successfully!");
-        // Reset form or redirect
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 2000);
+        setCreatedBusinessId(data.business.id);
+        setSuccess("Business created successfully! Now let's generate some reviews.");
+        // Clear selected tags so they can be used fresh for AI generation in Step 2
+        setSelectedTags([]);
+        setTagInput("");
+        setCurrentStep(2);
       } else {
         setError(data.error || "Failed to create business");
       }
