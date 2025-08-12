@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BusinessType, CreateBusinessRequest } from "@/types/business";
+import QRCode from "qrcode";
 
 interface ContactInfo {
   phone_number: string;
@@ -33,6 +34,21 @@ export default function AddBusinessForm() {
     description: "",
     tags: "", // Will be converted to array
   });
+
+  // Step 2 - Review generation state
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [editingFeedback, setEditingFeedback] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [addingFeedback, setAddingFeedback] = useState(false);
+  const [updatingFeedback, setUpdatingFeedback] = useState(false);
+  const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
+  const [generatingAIFeedback, setGeneratingAIFeedback] = useState(false);
+
+  // Step 3 - QR Code state
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Tag management state
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -73,6 +89,13 @@ export default function AddBusinessForm() {
   useEffect(() => {
     fetchBusinessTypes();
   }, []);
+
+  // Fetch feedbacks when we move to step 2
+  useEffect(() => {
+    if (currentStep === 2 && createdBusinessId) {
+      fetchFeedbacks();
+    }
+  }, [currentStep, createdBusinessId]);
 
   const fetchBusinessTypes = async () => {
     try {
