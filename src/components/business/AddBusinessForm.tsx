@@ -272,15 +272,251 @@ export default function AddBusinessForm() {
     }
   };
 
+  // Step 2 - Feedback Management Functions
+  const fetchFeedbacks = async () => {
+    if (!createdBusinessId) return;
+
+    try {
+      const response = await fetch(`/api/businesses/${createdBusinessId}/feedbacks`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbacks(data.feedbacks);
+      } else {
+        console.error("Error fetching feedbacks:", data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching feedbacks:", error);
+    }
+  };
+
+  const addFeedback = async () => {
+    if (!feedbackText.trim() || !createdBusinessId) return;
+
+    setAddingFeedback(true);
+    try {
+      const response = await fetch(`/api/businesses/${createdBusinessId}/feedbacks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ feedback: feedbackText }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbacks((prev) => [data.feedback, ...prev]);
+        setFeedbackText("");
+      } else {
+        setError(data.error || "Failed to add feedback");
+      }
+    } catch (error) {
+      console.error("Error adding feedback:", error);
+      setError("An unexpected error occurred while adding feedback");
+    } finally {
+      setAddingFeedback(false);
+    }
+  };
+
+  const generateAIFeedback = async () => {
+    if (!createdBusinessId) return;
+
+    setGeneratingAIFeedback(true);
+    try {
+      const response = await fetch(`/api/businesses/${createdBusinessId}/generate-feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tags: selectedTags // Send the current tags from the page
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeedbackText(data.feedback);
+      } else {
+        setError(data.error || "Failed to generate AI feedback");
+      }
+    } catch (error) {
+      console.error("Error generating AI feedback:", error);
+      setError("An unexpected error occurred while generating AI feedback");
+    } finally {
+      setGeneratingAIFeedback(false);
+    }
+  };
+
+  const deleteFeedback = async (feedbackId: number) => {
+    if (!confirm("Are you sure you want to delete this feedback?")) return;
+
+    setDeletingFeedback(feedbackId);
+    try {
+      const response = await fetch(
+        `/api/businesses/${createdBusinessId}/feedbacks/${feedbackId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        setFeedbacks((prev) => prev.filter((f) => f.id !== feedbackId));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete feedback");
+      }
+    } catch (error) {
+      console.error("Error deleting feedback:", error);
+      setError("An unexpected error occurred while deleting feedback");
+    } finally {
+      setDeletingFeedback(null);
+    }
+  };
+
+  // Step 3 - Generate QR Code
+  const generateQRCode = async () => {
+    if (!createdBusinessId) return;
+
+    setIsLoading(true);
+    try {
+      // Generate QR code URL for the business review page
+      const reviewUrl = `http://review.snapreview.ai/review/${createdBusinessId}`;
+      setQrCodeUrl(reviewUrl);
+      
+      // Generate QR code as data URL
+      const qrDataUrl = await QRCode.toDataURL(reviewUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
+      setQrCodeDataUrl(qrDataUrl);
+      setCurrentStep(3);
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      setError("Failed to generate QR code");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Download QR Code function
+  const downloadQRCode = () => {
+    if (!qrCodeDataUrl) return;
+    
+    const link = document.createElement('a');
+    link.download = `${formData.name || 'business'}-qr-code.png`;
+    link.href = qrCodeDataUrl;
+    link.click();
+  };
+
+  // Print QR Code function
+  const printQRCode = () => {
+    if (!qrCodeDataUrl) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>QR Code - ${formData.name}</title>
+            <style>
+              body { 
+                margin: 0; 
+                padding: 20px; 
+                text-align: center; 
+                font-family: Arial, sans-serif; 
+              }
+              .qr-container { 
+                display: inline-block; 
+                padding: 20px; 
+                border: 2px solid #000; 
+                margin: 20px; 
+              }
+              h1 { margin-bottom: 10px; }
+              p { margin: 5px 0; }
+              img { display: block; margin: 20px auto; }
+            </style>
+          </head>
+          <body>
+            <div class="qr-container">
+              <h1>${formData.name}</h1>
+              <p>Scan to leave a review</p>
+              <img src="${qrCodeDataUrl}" alt="QR Code" />
+              <p>Or visit: ${qrCodeUrl}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  // Check if step 1 submit button should be enabled
+  const isStep1Enabled = formData.name.trim().length > 0 && formData.google_maps_url.trim().length > 0;
+
+  // Check if step 2 can proceed (at least one feedback required)
+  const canProceedToStep3 = feedbacks.length > 0;
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Add New Business
+          Generate QR Code for Your Business
         </h1>
         <p className="text-gray-600">
-          Fill in the details to add your business location
+          Follow these 3 simple steps to create your business QR code
         </p>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+              1
+            </div>
+            <span className={`ml-2 text-sm font-medium ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-500'
+              }`}>
+              Add Business Details
+            </span>
+          </div>
+          <div className="flex-1 mx-4 h-1 bg-gray-200 rounded">
+            <div className={`h-1 rounded transition-all duration-300 ${currentStep >= 2 ? 'bg-blue-600 w-full' : 'bg-gray-200 w-0'
+              }`}></div>
+          </div>
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+              2
+            </div>
+            <span className={`ml-2 text-sm font-medium ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-500'
+              }`}>
+              Generate Reviews
+            </span>
+          </div>
+          <div className="flex-1 mx-4 h-1 bg-gray-200 rounded">
+            <div className={`h-1 rounded transition-all duration-300 ${currentStep >= 3 ? 'bg-blue-600 w-full' : 'bg-gray-200 w-0'
+              }`}></div>
+          </div>
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+              3
+            </div>
+            <span className={`ml-2 text-sm font-medium ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-500'
+              }`}>
+              QR Code
+            </span>
+          </div>
+        </div>
       </div>
 
       {error && (

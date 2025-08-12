@@ -16,6 +16,10 @@ export async function POST(
 
     const resolvedParams = await params;
     const businessId = resolvedParams.id;
+    
+    // Get tags from request body (if provided) or fallback to database tags
+    const body = await request.json().catch(() => ({}));
+    const providedTags = body.tags || [];
 
     // Get business details with business type information
     const businessQuery = `
@@ -41,12 +45,20 @@ export async function POST(
 
     const business = businessResult.rows[0];
 
-    // Get tags
-    const tagsResult = await pool.query(
-      "SELECT * FROM business_tags WHERE business_id = $1 ORDER BY tag",
-      [businessId]
-    );
-    const tags = tagsResult.rows.map(row => row.tag);
+    // Use provided tags if available, otherwise get from database
+    let tags = providedTags;
+    console.log("Provided tags from request:", providedTags);
+    
+    if (!tags || tags.length === 0) {
+      const tagsResult = await pool.query(
+        "SELECT * FROM business_tags WHERE business_id = $1 ORDER BY tag",
+        [businessId]
+      );
+      tags = tagsResult.rows.map(row => row.tag);
+      console.log("Using database tags:", tags);
+    } else {
+      console.log("Using provided tags:", tags);
+    }
 
     // Prepare business context for AI
     const businessContext = {
@@ -59,13 +71,14 @@ export async function POST(
     };
 
     // Create prompt for AI
+    const tagsText = businessContext.tags.length > 0 ? businessContext.tags.join(", ") : "general business";
     const prompt = `Generate a short, positive customer feedback/review for the following business. Keep it concise and authentic.
 
 Business Details:
 - Name: ${businessContext.name}
 - Type: ${businessContext.type}
 - Description: ${businessContext.description}
-- Tags: ${businessContext.tags.join(", ")}
+- Tags: ${tagsText}
 - Location: ${businessContext.address}
 
 Requirements:
