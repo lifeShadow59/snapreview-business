@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { BusinessType, CreateBusinessRequest } from "@/types/business";
 import QRCode from "qrcode";
 
@@ -124,12 +125,7 @@ export default function AddBusinessForm() {
     fetchBusinessTypes();
   }, []);
 
-  // Fetch feedbacks when we move to step 2
-  useEffect(() => {
-    if (currentStep === 2 && createdBusinessId) {
-      fetchFeedbacks();
-    }
-  }, [currentStep, createdBusinessId]);
+
 
   const fetchBusinessTypes = async () => {
     try {
@@ -307,7 +303,7 @@ export default function AddBusinessForm() {
   };
 
   // Step 2 - Feedback Management Functions
-  const fetchFeedbacks = async () => {
+  const fetchFeedbacks = useCallback(async () => {
     if (!createdBusinessId) return;
 
     try {
@@ -322,7 +318,14 @@ export default function AddBusinessForm() {
     } catch (error) {
       console.error("Error fetching feedbacks:", error);
     }
-  };
+  }, [createdBusinessId]);
+
+  // Fetch feedbacks when we move to step 2
+  useEffect(() => {
+    if (currentStep === 2 && createdBusinessId) {
+      fetchFeedbacks();
+    }
+  }, [currentStep, createdBusinessId, fetchFeedbacks]);
 
   const addFeedback = async () => {
     if (!feedbackText.trim() || !createdBusinessId) return;
@@ -418,7 +421,7 @@ export default function AddBusinessForm() {
       // Generate QR code URL for the business review page
       const reviewUrl = `http://review.snapreview.ai/review/${createdBusinessId}`;
       setQrCodeUrl(reviewUrl);
-      
+
       // Generate QR code as data URL
       const qrDataUrl = await QRCode.toDataURL(reviewUrl, {
         width: 300,
@@ -428,7 +431,7 @@ export default function AddBusinessForm() {
           light: '#FFFFFF'
         }
       });
-      
+
       setQrCodeDataUrl(qrDataUrl);
       setCurrentStep(3);
     } catch (error) {
@@ -442,7 +445,7 @@ export default function AddBusinessForm() {
   // Download QR Code function
   const downloadQRCode = () => {
     if (!qrCodeDataUrl) return;
-    
+
     const link = document.createElement('a');
     link.download = `${formData.name || 'business'}-qr-code.png`;
     link.href = qrCodeDataUrl;
@@ -452,7 +455,7 @@ export default function AddBusinessForm() {
   // Print QR Code function
   const printQRCode = () => {
     if (!qrCodeDataUrl) return;
-    
+
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -658,7 +661,7 @@ export default function AddBusinessForm() {
                 />
               </div>
               <p className="text-sm text-gray-600">
-                These are the only required fields. We'll fill in dummy data for other fields automatically.
+                These are the only required fields. We&apos;ll fill in dummy data for other fields automatically.
               </p>
             </div>
           </div>
@@ -1223,11 +1226,12 @@ export default function AddBusinessForm() {
               <div className="bg-white p-8 rounded-lg shadow-lg border-2 border-gray-200">
                 {qrCodeDataUrl ? (
                   <div className="text-center">
-                    <img 
-                      src={qrCodeDataUrl} 
-                      alt="QR Code" 
+                    <Image
+                      src={qrCodeDataUrl}
+                      alt="QR Code"
+                      width={300}
+                      height={300}
                       className="mx-auto mb-4"
-                      style={{ width: '300px', height: '300px' }}
                     />
                     <p className="text-sm text-gray-600 mb-2">
                       <strong>Scan to leave a review</strong>
@@ -1285,7 +1289,7 @@ export default function AddBusinessForm() {
                       </svg>
                       Download QR Code
                     </button>
-                    
+
                     <button
                       onClick={printQRCode}
                       disabled={!qrCodeDataUrl}
