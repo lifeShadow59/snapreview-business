@@ -49,9 +49,7 @@ export async function GET(
 
     // Create the URL that the QR code will point to
     // This could be a review page, business profile, etc.
-    const qrContent = `${
-      process.env.NEXTAUTH_URL || "http://localhost:3000"
-    }/review/${businessId}`;
+    const qrContent = `http://review.snapreview.ai/review/${businessId}`;
 
     const baseOptions = {
       errorCorrectionLevel: errorCorrectionLevel as "L" | "M" | "Q" | "H",
