@@ -17,17 +17,16 @@ export async function POST(
     const resolvedParams = await params;
     const businessId = resolvedParams.id;
     
-    // Get tags from request body (if provided) or fallback to database tags
+    // Get tags from request body - ONLY use provided tags
     const body = await request.json().catch(() => ({}));
     const providedTags = body.tags || [];
 
-    // Get business details with business type information
+    // Verify business ownership (minimal query)
     const businessQuery = `
       SELECT 
-        b.*,
-        bt.name as business_type_name
+        b.name,
+        b.user_id
       FROM businesses b
-      LEFT JOIN business_types bt ON b.business_type_id = bt.id
       WHERE b.id = $1 AND b.user_id = $2
     `;
 
@@ -45,49 +44,40 @@ export async function POST(
 
     const business = businessResult.rows[0];
 
-    // Use provided tags if available, otherwise get from database
-    let tags = providedTags;
-    console.log("Provided tags from request:", providedTags);
-    
+    // Only use provided tags - no fallback to database or other business info
+    const tags = providedTags;
+    console.log("Using only provided tags:", tags);
+
+    // Check if tags are provided
     if (!tags || tags.length === 0) {
-      const tagsResult = await pool.query(
-        "SELECT * FROM business_tags WHERE business_id = $1 ORDER BY tag",
-        [businessId]
+      return NextResponse.json(
+        { error: "No tags provided. Please add tags to generate AI reviews." },
+        { status: 400 }
       );
-      tags = tagsResult.rows.map(row => row.tag);
-      console.log("Using database tags:", tags);
-    } else {
-      console.log("Using provided tags:", tags);
     }
 
-    // Prepare business context for AI
+    // Prepare minimal business context for AI - only name and provided tags
     const businessContext = {
       name: business.name,
-      type: business.business_type_name || "General Business",
-      description: business.description || "",
-      tags: tags,
-      address: business.address || "",
-      website: business.website || ""
+      tags: tags
     };
 
-    // Create prompt for AI
-    const tagsText = businessContext.tags.length > 0 ? businessContext.tags.join(", ") : "general business";
-    const prompt = `Generate a short, positive customer feedback/review for the following business. Keep it concise and authentic.
+    // Create prompt for AI - only using business name and provided tags
+    const tagsText = businessContext.tags.join(", ");
+    const prompt = `Generate a short, positive customer feedback/review for a business. Keep it concise and authentic.
 
-Business Details:
+Business Information:
 - Name: ${businessContext.name}
-- Type: ${businessContext.type}
-- Description: ${businessContext.description}
-- Tags: ${tagsText}
-- Location: ${businessContext.address}
+- Tags/Keywords: ${tagsText}
 
 Requirements:
 1. MUST be positive and enthusiastic
 2. MUST be exactly 2-3 sentences (2-3 lines maximum)
-3. MUST mention the business name
-4. Should highlight 1-2 key aspects based on business type/tags
+3. MUST mention the business name "${businessContext.name}"
+4. MUST highlight aspects based ONLY on the provided tags: ${tagsText}
 5. Sound natural like a real satisfied customer wrote it
 6. Use conversational, friendly tone
+7. Do NOT mention any services or features not related to the provided tags
 
 Generate ONLY the feedback text, no quotes, no additional formatting.`;
 
