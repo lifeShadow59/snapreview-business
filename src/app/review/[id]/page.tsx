@@ -119,7 +119,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
                 QR
               </div>
               <span className="text-xs sm:text-sm font-medium text-gray-700">
-                Powered by ReviewQR
+                Powered by SnapReview.ai
               </span>
             </div>
             <p className="text-xs text-gray-500 px-2">

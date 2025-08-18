@@ -16,7 +16,7 @@ export const CTA = () => {
               Ready to Transform Your Business Reviews?
             </h2>
             <p className="text-blue-100 text-lg max-w-3xl mx-auto mb-8 animate-fadeInUp delay-200">
-              Join thousands of businesses already using ReviewQR to boost their
+              Join thousands of businesses already using SnapReview.ai to boost their
               online reputation and attract more customers.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeInUp delay-300">

@@ -47,14 +47,14 @@ export const Testimonials = () => {
             worldwide
           </h2>
           <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-            See what our customers are saying about how ReviewQR transformed
+            See what our customers are saying about how SnapReview.ai transformed
             their online reputation.
           </p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           <TestimonialCard
-            content="ReviewQR increased our Google reviews by 300% in just 2 months! Our customers love how easy it is to leave feedback."
+            content="SnapReview.ai increased our Google reviews by 300% in just 2 months! Our customers love how easy it is to leave feedback."
             author="Priya Sharma"
             role="Owner"
             company="Spice Garden Restaurant"

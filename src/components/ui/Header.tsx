@@ -1,17 +1,13 @@
 import Link from "next/link";
 import React from "react";
+import Logo from "./Logo";
 
 export const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50 animate-fadeIn">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center space-x-2 animate-slideInLeft">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg animate-float flex items-center justify-center">
-            <span className="text-white font-bold text-sm">QR</span>
-          </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            ReviewQR
-          </span>
+        <div className="animate-slideInLeft">
+          <Logo width={140} height={42} />
         </div>
 
         <nav className="hidden md:flex items-center gap-8 animate-fadeInUp">

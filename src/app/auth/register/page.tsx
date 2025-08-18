@@ -18,6 +18,7 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "@/components/ui/Logo";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import React, { useState } from "react";
@@ -150,13 +151,8 @@ const RegisterPage = () => {
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Logo and Header */}
         <div className="text-center">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">QR</span>
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ReviewQR
-            </span>
+          <Link href="/" className="inline-flex items-center mb-6">
+            <Logo width={160} height={48} />
           </Link>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Create your account

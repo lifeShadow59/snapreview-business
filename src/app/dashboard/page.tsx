@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Business } from "@/types/business";
+import { CompactLogo } from "@/components/ui/Logo";
 
 interface UserProfile {
   id: string;
@@ -132,13 +133,11 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-blue-600 rounded text-white flex items-center justify-center text-sm font-bold">
-                  QR
-                </div>
-                <span className="ml-2 text-xl font-bold text-gray-900">
-                  ReviewQR
-                </span>
+              <div
+                className="flex items-center cursor-pointer"
+                onClick={() => router.push("/dashboard")}
+              >
+                <CompactLogo />
               </div>
             </div>
             <div className="flex items-center space-x-4">

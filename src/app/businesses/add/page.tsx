@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import AddBusinessForm from "@/components/business/AddBusinessForm";
+import { CompactLogo } from "@/components/ui/Logo";
 
 export default function AddBusinessPage() {
   const { data: session, status } = useSession();
@@ -45,12 +46,7 @@ export default function AddBusinessPage() {
                 className="flex items-center cursor-pointer"
                 onClick={() => router.push("/dashboard")}
               >
-                <div className="w-8 h-8 bg-blue-600 rounded text-white flex items-center justify-center text-sm font-bold">
-                  QR
-                </div>
-                <span className="ml-2 text-xl font-bold text-gray-900">
-                  ReviewQR
-                </span>
+                <CompactLogo />
               </div>
             </div>
             <div className="flex items-center space-x-4">
