@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BusinessType, CreateBusinessRequest } from "@/types/business";
 import QRCode from "qrcode";
+import TagSelector from "./TagSelector";
 
 interface ContactInfo {
   phone_number: string;
@@ -87,9 +88,6 @@ export default function AddBusinessForm() {
 
   // Tag management state
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [phoneNumbers, setPhoneNumbers] = useState<ContactInfo[]>([
     { phone_number: "", is_primary: true, label: "Primary" },
@@ -99,26 +97,7 @@ export default function AddBusinessForm() {
     { email_address: "", is_primary: true, label: "Primary" },
   ]);
 
-  // Predefined tag suggestions
-  const predefinedTags = [
-    "restaurant", "food", "pizza", "burger", "coffee", "cafe", "bakery", "dessert",
-    "delivery", "takeout", "dine-in", "fast-food", "fine-dining", "casual-dining",
-    "italian", "chinese", "indian", "mexican", "japanese", "thai", "american",
-    "vegetarian", "vegan", "halal", "kosher", "organic", "healthy",
-    "shopping", "retail", "clothing", "fashion", "electronics", "books", "gifts",
-    "beauty", "salon", "spa", "massage", "wellness", "fitness", "gym", "yoga",
-    "healthcare", "medical", "dental", "pharmacy", "clinic", "hospital",
-    "automotive", "repair", "service", "maintenance", "car-wash", "gas-station",
-    "education", "school", "training", "tutoring", "language", "music", "art",
-    "entertainment", "cinema", "theater", "gaming", "sports", "recreation",
-    "hotel", "accommodation", "travel", "tourism", "vacation", "resort",
-    "professional", "consulting", "legal", "accounting", "real-estate", "insurance",
-    "technology", "software", "hardware", "repair", "support", "development",
-    "home-services", "cleaning", "plumbing", "electrical", "construction", "renovation",
-    "pet-services", "veterinary", "grooming", "boarding", "training", "supplies",
-    "luxury", "premium", "budget", "affordable", "family-friendly", "kid-friendly",
-    "24-hours", "open-late", "weekend", "appointment", "walk-in", "online", "mobile"
-  ];
+
 
   // Fetch business types on component mount
   useEffect(() => {
@@ -202,47 +181,8 @@ export default function AddBusinessForm() {
   };
 
   // Tag management functions
-  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setTagInput(value);
-
-    if (value.length >= 3) {
-      const filtered = predefinedTags.filter(
-        (tag) =>
-          tag.toLowerCase().includes(value.toLowerCase()) &&
-          !selectedTags.includes(tag)
-      );
-      setTagSuggestions(filtered.slice(0, 10)); // Limit to 10 suggestions
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-      setTagSuggestions([]);
-    }
-  };
-
-  const addTag = (tag: string) => {
-    if (tag.trim() && !selectedTags.includes(tag.trim())) {
-      setSelectedTags((prev) => [...prev, tag.trim()]);
-      setTagInput("");
-      setShowSuggestions(false);
-      setTagSuggestions([]);
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove));
-  };
-
-  const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (tagInput.trim()) {
-        addTag(tagInput);
-      }
-    } else if (e.key === "Escape") {
-      setShowSuggestions(false);
-      setTagSuggestions([]);
-    }
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
   };
 
   // Step 1 - Create Business
@@ -289,7 +229,6 @@ export default function AddBusinessForm() {
         setSuccess("Business created successfully! Now let's generate some reviews.");
         // Clear selected tags so they can be used fresh for AI generation in Step 2
         setSelectedTags([]);
-        setTagInput("");
         setCurrentStep(2);
       } else {
         setError(data.error || "Failed to create business");
@@ -976,73 +915,12 @@ export default function AddBusinessForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Business Tags (for AI Review Generation)
                 </label>
-
-                {/* Selected Tags Display */}
-                {selectedTags.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
-                        >
-                          #{tag}
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-200 hover:bg-blue-300 text-blue-600 hover:text-blue-800 transition-colors"
-                            title="Remove tag"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tag Input with Autocomplete */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={handleTagInputChange}
-                    onKeyDown={handleTagKeyPress}
-                    placeholder="Type to search for tags (e.g., restaurant, coffee, service)..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-
-                  {/* Suggestions Dropdown */}
-                  {showSuggestions && tagSuggestions.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {tagSuggestions.map((suggestion, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => addTag(suggestion)}
-                          className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0"
-                        >
-                          <span className="text-gray-700">#{suggestion}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Add tags to help AI generate more relevant reviews for your business type.
-                </p>
+                <TagSelector
+                  selectedTags={selectedTags}
+                  onTagsChange={handleTagsChange}
+                  maxTags={10}
+                  placeholder="Type to search for tags (e.g., restaurant, coffee, service)..."
+                />
               </div>
 
               {/* Add New Review */}

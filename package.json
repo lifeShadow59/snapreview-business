@@ -6,10 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup-db": "node src/lib/setup-database.js",
+    "add-feedback-columns": "node src/lib/add-feedback-columns.js",
+    "check-db-schema": "node src/lib/check-db-schema.js",
+    "test-languages": "node src/lib/test-languages.js"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.10.0",
+    "@google/generative-ai": "^0.24.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/qrcode": "^1.5.5",
     "bcryptjs": "^3.0.2",

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Business } from "@/types/business";
 import { CompactLogo } from "@/components/ui/Logo";
+import BusinessListItem from "@/components/business/BusinessListItem";
 
 interface UserProfile {
   id: string;
@@ -34,6 +35,7 @@ export default function DashboardPage() {
     conversionRate: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [showAllBusinesses, setShowAllBusinesses] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
@@ -401,10 +403,10 @@ export default function DashboardPage() {
                   Your Businesses
                 </h2>
                 <button
-                  onClick={() => router.push("/businesses")}
+                  onClick={() => setShowAllBusinesses(!showAllBusinesses)}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                 >
-                  View all →
+                  {showAllBusinesses ? "Hide all" : "View all"} →
                 </button>
               </div>
             </div>
@@ -472,10 +474,10 @@ export default function DashboardPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/businesses/${business.id}/edit`);
+                            router.push(`/businesses/${business.id}`);
                           }}
                           className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
-                          title="Edit business"
+                          title="View business details"
                         >
                           <svg
                             className="w-4 h-4"
@@ -487,7 +489,13 @@ export default function DashboardPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                             />
                           </svg>
                         </button>
@@ -512,9 +520,9 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                  {businesses.length > 3 && (
+                  {businesses.length > 3 && !showAllBusinesses && (
                     <button
-                      onClick={() => router.push("/businesses")}
+                      onClick={() => setShowAllBusinesses(true)}
                       className="w-full text-center py-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
                       View {businesses.length - 3} more businesses
@@ -525,6 +533,44 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Expanded Business List */}
+        {showAllBusinesses && businesses.length > 0 && (
+          <div className="mt-8">
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    All Businesses ({businesses.length})
+                  </h2>
+                  <button
+                    onClick={() => setShowAllBusinesses(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {businesses.map((business) => (
+                    <BusinessListItem
+                      key={business.id}
+                      business={business}
+                      onEdit={() => router.push(`/businesses/${business.id}`)}
+                      onDelete={() => {
+                        // Refresh the business list after deletion
+                        fetchBusinesses();
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

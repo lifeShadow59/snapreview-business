@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Business } from "@/types/business";
 import { CompactLogo } from "@/components/ui/Logo";
+import LanguageSelector from "@/components/business/LanguageSelector";
+import BulkFeedbackGenerator from "@/components/business/BulkFeedbackGenerator";
 
 interface Feedback {
   id: number;
@@ -30,6 +32,11 @@ export default function BusinessDetailsPage() {
   const [updatingFeedback, setUpdatingFeedback] = useState(false);
   const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
   const [generatingAIFeedback, setGeneratingAIFeedback] = useState(false);
+  
+  // Language management state
+  const [businessLanguages, setBusinessLanguages] = useState<string[]>([]);
+  const [languagesLocked, setLanguagesLocked] = useState(false);
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("");
 
   const fetchBusiness = useCallback(async () => {
     try {
@@ -67,7 +74,11 @@ export default function BusinessDetailsPage() {
   // Feedback management functions
   const fetchFeedbacks = useCallback(async () => {
     try {
-      const response = await fetch(`/api/businesses/${params.id}/feedbacks`);
+      const url = selectedLanguageFilter 
+        ? `/api/businesses/${params.id}/feedbacks?language=${selectedLanguageFilter}`
+        : `/api/businesses/${params.id}/feedbacks`;
+      
+      const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
@@ -78,6 +89,20 @@ export default function BusinessDetailsPage() {
     } catch (error) {
       console.error("Error fetching feedbacks:", error);
     }
+  }, [params.id, selectedLanguageFilter]);
+
+  const fetchLanguagePreferences = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/businesses/${params.id}/languages`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setBusinessLanguages(data.languages.map((lang: { language_code: string }) => lang.language_code));
+        setLanguagesLocked(data.locked);
+      }
+    } catch (error) {
+      console.error("Error fetching language preferences:", error);
+    }
   }, [params.id]);
 
   useEffect(() => {
@@ -86,8 +111,16 @@ export default function BusinessDetailsPage() {
     } else if (status === "authenticated" && params.id) {
       fetchBusiness();
       fetchFeedbacks();
+      fetchLanguagePreferences();
     }
-  }, [status, router, params.id, fetchBusiness, fetchFeedbacks]);
+  }, [status, router, params.id, fetchBusiness, fetchFeedbacks, fetchLanguagePreferences]);
+
+  // Refetch feedbacks when language filter changes
+  useEffect(() => {
+    if (status === "authenticated" && params.id) {
+      fetchFeedbacks();
+    }
+  }, [selectedLanguageFilter, fetchFeedbacks, status, params.id]);
 
   const addFeedback = async () => {
     if (!feedbackText.trim()) return;
@@ -589,15 +622,80 @@ export default function BusinessDetailsPage() {
               </div>
             )}
 
-            {/* Business Feedbacks */}
+            {/* Language Preferences */}
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Business Feedbacks
+                  Language Preferences
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Add and manage feedback for your business
+                  Set up to 3 languages for multilingual feedback generation
                 </p>
+              </div>
+              <div className="p-6">
+                <LanguageSelector
+                  businessId={params.id as string}
+                  selectedLanguages={businessLanguages}
+                  onLanguagesChange={setBusinessLanguages}
+                  disabled={languagesLocked}
+                />
+              </div>
+            </div>
+
+            {/* Bulk Feedback Generator */}
+            {business.tags && business.tags.length > 0 && (
+              <BulkFeedbackGenerator
+                key={`bulk-feedback-${businessLanguages.join('-')}`} // Force re-render when languages change
+                businessId={params.id as string}
+                businessTags={business.tags.map(tag => tag.tag)}
+                onFeedbackGenerated={(feedbacks) => {
+                  console.log("Generated feedbacks:", feedbacks);
+                  // Refresh feedbacks list after generation
+                  fetchFeedbacks();
+                }}
+                onFeedbacksSaved={() => {
+                  // Refresh feedbacks list after saving bulk feedbacks
+                  fetchFeedbacks();
+                }}
+                onLanguagesChanged={() => {
+                  // Refresh language preferences when they change
+                  fetchLanguagePreferences();
+                }}
+              />
+            )}
+
+            {/* Business Feedbacks */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Business Feedbacks
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Add and manage feedback for your business
+                    </p>
+                  </div>
+                  {businessLanguages.length > 1 && (
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Filter by language:
+                      </label>
+                      <select
+                        value={selectedLanguageFilter}
+                        onChange={(e) => setSelectedLanguageFilter(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">All languages</option>
+                        {businessLanguages.map((langCode) => (
+                          <option key={langCode} value={langCode}>
+                            {langCode.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="p-6">
                 {/* Add New Feedback */}

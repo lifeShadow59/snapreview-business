@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import pool from "@/lib/db";
+// import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // POST /api/businesses/[id]/generate-feedback - Generate AI feedback for a business
 export async function POST(
@@ -81,7 +82,7 @@ Requirements:
 
 Generate ONLY the feedback text, no quotes, no additional formatting.`;
 
-    // Get API key from environment variables
+    // Get OpenRouter API key from environment variables
     const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
@@ -91,43 +92,66 @@ Generate ONLY the feedback text, no quotes, no additional formatting.`;
       );
     }
 
+    // Enhanced system prompt for more human-like reviews
+    const systemPrompt = `You are a satisfied customer writing ONE short, positive review. Always be enthusiastic and keep responses to 2-3 sentences maximum. Make it sound natural and authentic like a real customer wrote it. Generate ONLY ONE review, not multiple examples.`;
+
     // Call OpenRouter API
-    const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Business Feedback Generator"
+        "HTTP-Referer": process.env.NEXTAUTH_URL || "http://localhost:3000",
+        "X-Title": "SnapReview AI",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-3.5-turbo",
-        messages: [
+        "model": "anthropic/claude-3.5-sonnet",
+        "messages": [
           {
-            role: "system",
-            content: "You are a satisfied customer writing a short, positive review. Always be enthusiastic and keep responses to 2-3 sentences maximum."
+            "role": "system",
+            "content": systemPrompt
           },
           {
-            role: "user",
-            content: prompt
+            "role": "user", 
+            "content": prompt
           }
         ],
-        max_tokens: 150,
-        temperature: 0.7
+        "max_tokens": 150,
+        "temperature": 0.8
       })
     });
 
-    if (!openRouterResponse.ok) {
-      const errorData = await openRouterResponse.text();
-      console.error("OpenRouter API error:", errorData);
-      return NextResponse.json(
-        { error: "Failed to generate AI feedback" },
-        { status: 500 }
-      );
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
-    const aiResponse = await openRouterResponse.json();
-    const generatedFeedback = aiResponse.choices[0]?.message?.content?.trim();
+    const data = await response.json();
+    let generatedFeedback = data.choices?.[0]?.message?.content?.trim();
+
+    // Commented out Gemini code
+    // const genAI = new GoogleGenerativeAI(apiKey);
+    // const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    // const result = await model.generateContent([
+    //   { text: systemPrompt },
+    //   { text: prompt }
+    // ]);
+    // const response = await result.response;
+    // let generatedFeedback = response.text()?.trim();
+    
+    // Clean up the response to extract only the first review if multiple are generated
+    if (generatedFeedback) {
+      // Remove any markdown formatting or multiple review indicators
+      generatedFeedback = generatedFeedback
+        .replace(/\*\*Review \d+:\*\*/g, '')
+        .replace(/\*\*.*?\*\*/g, '')
+        .replace(/Review \d+:/g, '')
+        .replace(/Okay, here's my review:/g, '')
+        .replace(/Here's my review:/g, '')
+        .replace(/"/g, '') // Remove quotes
+        .split('\n\n')[0] // Take only the first paragraph
+        .split('**')[0] // Remove any markdown
+        .trim();
+    }
 
     if (!generatedFeedback) {
       return NextResponse.json(

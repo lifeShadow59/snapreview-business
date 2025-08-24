@@ -248,4 +248,86 @@ export async function PUT(
   }
 }
 
+// DELETE /api/businesses/[id] - Delete a specific business
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
 
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const businessId = resolvedParams.id;
+
+    // Verify business ownership
+    const ownershipCheck = await pool.query(
+      "SELECT id, name FROM businesses WHERE id = $1 AND user_id = $2",
+      [businessId, session.user.id]
+    );
+
+    if (ownershipCheck.rows.length === 0) {
+      return NextResponse.json(
+        { error: "Business not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    const businessName = ownershipCheck.rows[0].name;
+
+    // Start transaction for cascade delete
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Check if business_language_preferences table exists first
+      let hasLanguagePreferencesTable = true;
+      try {
+        await client.query("SELECT 1 FROM business_language_preferences LIMIT 1");
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === '42P01') {
+          hasLanguagePreferencesTable = false;
+        }
+      }
+
+      // Delete related data (cascade delete will handle most of this, but we'll be explicit)
+      await client.query("DELETE FROM business_feedbacks WHERE business_id = $1", [businessId]);
+      
+      // Only try to delete from business_language_preferences if table exists
+      if (hasLanguagePreferencesTable) {
+        await client.query("DELETE FROM business_language_preferences WHERE business_id = $1", [businessId]);
+      }
+      
+      await client.query("DELETE FROM business_tags WHERE business_id = $1", [businessId]);
+      await client.query("DELETE FROM business_phone_numbers WHERE business_id = $1", [businessId]);
+      await client.query("DELETE FROM business_email_addresses WHERE business_id = $1", [businessId]);
+      await client.query("DELETE FROM business_metrics WHERE business_id = $1", [businessId]);
+      
+      // Finally delete the business itself
+      await client.query("DELETE FROM businesses WHERE id = $1 AND user_id = $2", [
+        businessId,
+        session.user.id,
+      ]);
+
+      await client.query("COMMIT");
+
+      return NextResponse.json({
+        message: `Business "${businessName}" deleted successfully`,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Error deleting business:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
