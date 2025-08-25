@@ -77,6 +77,8 @@ export default function LanguageSelector({
         };
       });
 
+      console.log('Saving language preferences:', languages);
+
       const response = await fetch(`/api/businesses/${businessId}/languages`, {
         method: "POST",
         headers: {
@@ -85,8 +87,10 @@ export default function LanguageSelector({
         body: JSON.stringify({ languages }),
       });
 
+      const data = await response.json();
+      console.log('Language preferences response:', data);
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to save language preferences");
       }
 

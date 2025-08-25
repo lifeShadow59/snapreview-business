@@ -92,13 +92,18 @@ export default function BusinessDetailsPage() {
   }, [params.id, selectedLanguageFilter]);
 
   const fetchLanguagePreferences = useCallback(async () => {
+    console.log('Fetching language preferences for business:', params.id);
     try {
       const response = await fetch(`/api/businesses/${params.id}/languages`);
       const data = await response.json();
 
+      console.log('Language preferences response:', data);
+
       if (response.ok) {
         setBusinessLanguages(data.languages.map((lang: { language_code: string }) => lang.language_code));
         setLanguagesLocked(data.locked);
+      } else {
+        console.error('Failed to fetch language preferences:', data.error);
       }
     } catch (error) {
       console.error("Error fetching language preferences:", error);
@@ -113,7 +118,7 @@ export default function BusinessDetailsPage() {
       fetchFeedbacks();
       fetchLanguagePreferences();
     }
-  }, [status, router, params.id, fetchBusiness, fetchFeedbacks, fetchLanguagePreferences]);
+  }, [status, router, params.id]);
 
   // Refetch feedbacks when language filter changes
   useEffect(() => {
@@ -121,6 +126,19 @@ export default function BusinessDetailsPage() {
       fetchFeedbacks();
     }
   }, [selectedLanguageFilter, fetchFeedbacks, status, params.id]);
+
+  // Listen for language preference updates
+  useEffect(() => {
+    const handleLanguageUpdate = () => {
+      fetchLanguagePreferences();
+    };
+
+    window.addEventListener('languagePreferencesUpdated', handleLanguageUpdate);
+    
+    return () => {
+      window.removeEventListener('languagePreferencesUpdated', handleLanguageUpdate);
+    };
+  }, [fetchLanguagePreferences]);
 
   const addFeedback = async () => {
     if (!feedbackText.trim()) return;

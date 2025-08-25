@@ -65,22 +65,34 @@ export async function POST(
 
     // Create prompt for AI - only using business name and provided tags
     const tagsText = businessContext.tags.join(", ");
-    const prompt = `Generate a short, positive customer feedback/review for a business. Keep it concise and authentic.
+    
+    // Generate random sentence count (1-3 sentences)
+    const sentenceCount = Math.floor(Math.random() * 3) + 1;
+    const sentenceText = sentenceCount === 1 ? "1 sentence" : `${sentenceCount} sentences`;
+    
+    // Add randomness to prevent repetition
+    const randomSeed = Math.floor(Math.random() * 1000);
+    
+    const prompt = `Generate a unique, positive customer review for a business. Make it authentic and conversational.
 
 Business Information:
 - Name: ${businessContext.name}
-- Tags/Keywords: ${tagsText}
+- Focus Areas: ${tagsText}
+- Review Length: Exactly ${sentenceText}
+- Uniqueness Seed: ${randomSeed}
 
 Requirements:
-1. MUST be positive and enthusiastic
-2. MUST be exactly 2-3 sentences (2-3 lines maximum)
-3. MUST mention the business name "${businessContext.name}"
-4. MUST highlight aspects based ONLY on the provided tags: ${tagsText}
-5. Sound natural like a real satisfied customer wrote it
-6. Use conversational, friendly tone
-7. Do NOT mention any services or features not related to the provided tags
+1. Write EXACTLY ${sentenceText} - no more, no less
+2. Be positive and enthusiastic but natural
+3. Mention "${businessContext.name}" in the review
+4. Focus ONLY on: ${tagsText}
+5. Sound like a real customer wrote it
+6. Include personal touches (timing, experience, emotions)
+7. Use casual, conversational language
+8. Make it completely unique and unrepeatable
+9. Vary sentence structure and vocabulary
 
-Generate ONLY the feedback text, no quotes, no additional formatting.`;
+Generate ONLY the review text, no quotes or formatting.`;
 
     // Get OpenRouter API key from environment variables
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -92,8 +104,8 @@ Generate ONLY the feedback text, no quotes, no additional formatting.`;
       );
     }
 
-    // Enhanced system prompt for more human-like reviews
-    const systemPrompt = `You are a satisfied customer writing ONE short, positive review. Always be enthusiastic and keep responses to 2-3 sentences maximum. Make it sound natural and authentic like a real customer wrote it. Generate ONLY ONE review, not multiple examples.`;
+    // Enhanced system prompt for more human-like reviews with randomness
+    const systemPrompt = `You are a real customer writing an authentic review. Create unique, natural-sounding feedback that varies in style and content. Never repeat phrases or patterns. Use personal experiences, specific details, and genuine emotions. Each review must be completely different from any previous ones.`;
 
     // Call OpenRouter API
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {

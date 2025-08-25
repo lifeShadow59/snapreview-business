@@ -95,13 +95,8 @@ export default function BulkFeedbackGenerator({
     fetchLanguages();
   }, [fetchLanguages]);
 
-  // Expose refresh function through callback
-  useEffect(() => {
-    if (onLanguagesChanged) {
-      // Call the parent's callback with our refresh function
-      onLanguagesChanged();
-    }
-  }, [onLanguagesChanged]);
+  // Expose refresh function through callback - removed to prevent infinite loops
+  // The parent can listen to the 'languagePreferencesUpdated' event instead
 
   // Listen for language changes and refresh
   useEffect(() => {

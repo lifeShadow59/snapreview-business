@@ -16,6 +16,8 @@ export async function GET(
 
     const resolvedParams = await params;
     const businessId = resolvedParams.id;
+    
+    console.log('Fetching language preferences for business:', businessId);
 
     // Verify business ownership
     const ownershipCheck = await pool.query(
@@ -47,6 +49,12 @@ export async function GET(
     }
 
     const locked = languagesResult.rows.length > 0;
+
+    console.log('Language preferences result:', { 
+      languages: languagesResult.rows, 
+      locked,
+      businessId 
+    });
 
     return NextResponse.json({
       languages: languagesResult.rows,

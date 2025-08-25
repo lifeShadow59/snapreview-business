@@ -84,23 +84,37 @@ export async function POST(
     const generatedFeedbacks = [];
     const tagsText = tags.join(", ");
 
-    // Create diverse prompt variations for unique reviews
-    const promptVariations = [
-      `Write a genuine customer review for ${business.name}. Mention your experience with: ${tagsText}. Use 2-3 sentences with personal details like timing or specific interactions.`,
-      `Create an authentic review for ${business.name} focusing on: ${tagsText}. Write 3-4 sentences describing your visit, what impressed you, and why you'd recommend it.`,
-      `Generate a heartfelt customer feedback for ${business.name}. Highlight: ${tagsText}. Use 2 sentences with specific examples and emotional connection.`,
-      `Write a detailed positive review for ${business.name} about: ${tagsText}. Include 3-4 sentences with personal story, specific praise, and recommendation.`,
-      `Create a conversational review for ${business.name} mentioning: ${tagsText}. Write 2-3 sentences like you're telling a friend about your great experience.`,
-      `Generate an enthusiastic review for ${business.name} focusing on: ${tagsText}. Use 4 sentences with specific details, comparisons, and personal touches.`,
-      `Write a thoughtful customer review for ${business.name} about: ${tagsText}. Include 2-3 sentences with context about why you visited and what exceeded expectations.`,
-      `Create a warm, personal review for ${business.name} highlighting: ${tagsText}. Write 3 sentences with specific moments, feelings, and future plans to return.`
+    // Create diverse prompt templates for unique reviews
+    const promptTemplates = [
+      "Write a genuine customer review for {business} about {tags}. Share your personal experience with specific details.",
+      "Create an authentic review for {business} focusing on {tags}. Describe what impressed you most during your visit.",
+      "Generate heartfelt feedback for {business} highlighting {tags}. Include emotional connection and specific examples.",
+      "Write a conversational review for {business} mentioning {tags}. Sound like you're telling a friend about your experience.",
+      "Create an enthusiastic review for {business} about {tags}. Include specific details and personal touches.",
+      "Generate a thoughtful review for {business} covering {tags}. Explain why you visited and what exceeded expectations.",
+      "Write a warm, personal review for {business} highlighting {tags}. Share specific moments and future plans.",
+      "Create a detailed review for {business} focusing on {tags}. Include comparisons and recommendations."
     ];
 
     for (let i = 0; i < quantity; i++) {
       try {
-        // Use different prompt variations for variety
-        const promptIndex = i % promptVariations.length;
-        const basePrompt = promptVariations[promptIndex];
+        // Generate random sentence count (1-3 sentences)
+        const sentenceCount = Math.floor(Math.random() * 3) + 1;
+        const sentenceText = sentenceCount === 1 ? "1 sentence" : `${sentenceCount} sentences`;
+        
+        // Use different prompt templates for variety
+        const templateIndex = i % promptTemplates.length;
+        const template = promptTemplates[templateIndex];
+        
+        // Add randomness and uniqueness
+        const randomSeed = Math.floor(Math.random() * 10000) + i;
+        const timeVariations = ["recently", "last week", "yesterday", "this morning", "earlier today", "a few days ago"];
+        const timeContext = timeVariations[Math.floor(Math.random() * timeVariations.length)];
+        
+        // Create unique prompt
+        const basePrompt = template
+          .replace('{business}', business.name)
+          .replace('{tags}', tagsText);
         
         // Add language instruction if not English
         let languageInstruction = '';
@@ -109,22 +123,29 @@ export async function POST(
           languageInstruction = ` Write the entire review in ${languageName} language. Use natural ${languageName} expressions and vocabulary that native speakers would use.`;
         }
 
-        const fullPrompt = basePrompt + languageInstruction;
+        const fullPrompt = `${basePrompt}
 
-        // Enhanced system prompt for more human-like reviews
-        const systemPrompt = `You are a real customer who had a great experience. Write ONE authentic review that:
-        - Sounds completely natural and human-written
-        - Includes personal details, emotions, and specific experiences
-        - Is 2-4 sentences long (vary randomly)
-        - Uses casual, conversational language with minor imperfections
-        - Includes specific details like timing, interactions, or comparisons
-        - Shows genuine enthusiasm without being overly promotional
-        - Uses natural sentence structures and vocabulary
-        - Includes personal context (why you visited, who you were with, etc.)
-        - Avoids repetitive phrases or AI-like patterns
-        - Is completely unique and unrepeatable
-        - IMPORTANT: Generate ONLY ONE review, not multiple examples
-        ${language_code !== 'en' ? `- Write fluently in ${getLanguageName(language_code)} using natural expressions, local phrases, and cultural context that native speakers would use` : ''}`;
+Requirements:
+- Write EXACTLY ${sentenceText} - no more, no less
+- Mention visiting ${timeContext}
+- Include personal details and emotions
+- Make it completely unique (Seed: ${randomSeed})
+- Sound natural and conversational
+- Focus only on: ${tagsText}
+- Be positive but authentic${languageInstruction}
+
+Generate ONLY the review text, no quotes or formatting.`;
+
+        // Enhanced system prompt for more human-like reviews with strict uniqueness
+        const systemPrompt = `You are a real customer writing a unique, authentic review. Each review must be completely different from any previous ones. Vary your:
+        - Sentence structure and length (write exactly ${sentenceText})
+        - Vocabulary and expressions
+        - Personal details and context
+        - Emotional tone and enthusiasm level
+        - Specific experiences mentioned
+        - Writing style and voice
+        
+        Never repeat phrases, patterns, or structures. Make each review sound like it's from a different person with different experiences. Include personal touches like timing, companions, specific interactions, or comparisons.${language_code !== 'en' ? ` Write fluently in ${getLanguageName(language_code)} using natural expressions and cultural context.` : ''}`;
 
         // Call OpenRouter API
         try {
